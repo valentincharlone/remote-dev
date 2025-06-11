@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Background from "./Background";
 import Container from "./Container";
 import Footer from "./Footer";
@@ -12,29 +12,13 @@ import ResultsCount from "./ResultsCount";
 import SortingControls from "./SortingControls";
 import JobList from "./JobList";
 import PaginationControls from "./PaginationControls";
+import { useActiveId, useJobItem, useJobItems } from "../lib/hooks";
 
 function App() {
-  const [searchText, setSearchText] = useState("");
-  const [jobItems, setJobItems] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
-
-  useEffect(() => {
-    if (!searchText) return;
-
-    const fetchJobsItems = async () => {
-      setIsLoading(true);
-      const response = await fetch(
-        `https://bytegrad.com/course-assets/projects/rmtdev/api/data?search=${searchText}`
-      );
-      if (!response.ok) {
-        throw new Error("Failed to fetch data");
-      }
-      const data = await response.json();
-      setIsLoading(false);
-      setJobItems(data.jobItems);
-    };
-    fetchJobsItems();
-  }, [searchText]);
+  const [searchText, setSearchText] = useState<string>("");
+  const { jobItemsSliced: jobItems, isLoading } = useJobItems(searchText);
+  const activeId = useActiveId();
+  const { jobItem } = useJobItem(activeId);
 
   return (
     <>
