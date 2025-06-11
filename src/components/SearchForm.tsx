@@ -1,14 +1,6 @@
-import { useState } from "react";
-
-// https://bytegrad.com/course-assets/projects/rmtdev/api/data?search=react
-
-export default function SearchForm() {
-  const [searchText, setSearchText] = useState("");
-  const handleSubmit = (e) => {
-    e.preventDefault();
-  };
+export default function SearchForm({ searchText, setSearchText }) {
   return (
-    <form onSubmit={handleSubmit} className="search">
+    <form className="search">
       <button>
         <i className="fa-solid fa-magnifying-glass"></i>
       </button>
