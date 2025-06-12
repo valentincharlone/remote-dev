@@ -1,11 +1,24 @@
 import { useEffect, useState } from "react";
-import { JobItem } from "./types";
+import { JobItem, JobItemExpanded } from "./types";
 import { BASE_API_URL } from "./constants";
+import { useQuery } from "@tanstack/react-query";
+
+type JobItemApiResponse = {
+  public: boolean;
+  jobItem: JobItemExpanded;
+};
+
+const fetchJobItem = async (id: number): Promise<JobItemApiResponse> => {
+  const response = await fetch(`${BASE_API_URL}/${id}`);
+  const data = await response.json();
+  return data;
+};
 
 export function useJobItems(searchText: string) {
   const [jobItems, setJobItems] = useState<JobItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
+  const totalNumberOfJobs = jobItems.length;
   const jobItemsSliced = jobItems.slice(0, 7);
 
   useEffect(() => {
@@ -24,28 +37,24 @@ export function useJobItems(searchText: string) {
     fetchJobsItems();
   }, [searchText]);
 
-  return { jobItemsSliced, isLoading };
+  return { jobItemsSliced, isLoading, totalNumberOfJobs };
 }
 
 export function useJobItem(id: number | null) {
-  const [jobItem, setJobItem] = useState<JobItem | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-
-  useEffect(() => {
-    const fetchJobItem = async () => {
-      setIsLoading(true);
-      const response = await fetch(`${BASE_API_URL}/${id}`);
-      if (!response.ok) {
-        throw new Error("Failed to fetch data");
-      }
-      const data = await response.json();
-      setIsLoading(false);
-      setJobItem(data.jobItem);
-    };
-    fetchJobItem();
-  }, [id]);
-
-  return { jobItem, isLoading };
+  const { data, isInitialLoading } = useQuery(
+    ["job-item", id],
+    () => (id ? fetchJobItem(id) : null),
+    {
+      staleTime: 1000 * 60 * 60,
+      refetchOnWindowFocus: false,
+      retry: false,
+      enabled: Boolean(id),
+      onError: () => {},
+    }
+  );
+  const jobItem = data?.jobItem;
+  const isLoading = isInitialLoading;
+  return { jobItem, isLoading } as const;
 }
 
 export function useActiveJobItem() {
@@ -71,4 +80,19 @@ export function useActiveId() {
     };
   }, []);
   return activeId;
+}
+
+export function useDebounce(searchText: string) {
+  const [debounceValue, setDebounceValue] = useState<string>(searchText);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebounceValue(searchText);
+    }, 1000);
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [searchText]);
+
+  return debounceValue;
 }
