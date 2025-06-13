@@ -2,57 +2,71 @@ import { useEffect, useState } from "react";
 import { JobItem, JobItemExpanded } from "./types";
 import { BASE_API_URL } from "./constants";
 import { useQuery } from "@tanstack/react-query";
+import { handleError } from "./utils";
 
 type JobItemApiResponse = {
   public: boolean;
   jobItem: JobItemExpanded;
 };
 
-const fetchJobItem = async (id: number): Promise<JobItemApiResponse> => {
+type JobItemsApiResponse = {
+  public: boolean;
+  sorted: boolean;
+  jobItems: JobItem[];
+};
+
+const getJobItem = async (id: number): Promise<JobItemApiResponse> => {
   const response = await fetch(`${BASE_API_URL}/${id}`);
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.description);
+  }
+  const data = await response.json();
+  return data;
+};
+
+const getJobItems = async (
+  searchText: string
+): Promise<JobItemsApiResponse> => {
+  const response = await fetch(`${BASE_API_URL}?search=${searchText}`);
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.description);
+  }
   const data = await response.json();
   return data;
 };
 
 export function useJobItems(searchText: string) {
-  const [jobItems, setJobItems] = useState<JobItem[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-
-  const totalNumberOfJobs = jobItems.length;
-  const jobItemsSliced = jobItems.slice(0, 7);
-
-  useEffect(() => {
-    if (!searchText) return;
-
-    const fetchJobsItems = async () => {
-      setIsLoading(true);
-      const response = await fetch(`${BASE_API_URL}?search=${searchText}`);
-      if (!response.ok) {
-        throw new Error("Failed to fetch data");
-      }
-      const data = await response.json();
-      setIsLoading(false);
-      setJobItems(data.jobItems);
-    };
-    fetchJobsItems();
-  }, [searchText]);
-
-  return { jobItemsSliced, isLoading, totalNumberOfJobs };
+  const { data, isInitialLoading } = useQuery(
+    ["job-items", searchText],
+    () => (searchText ? getJobItems(searchText) : null),
+    {
+      staleTime: 1000 * 60 * 60,
+      refetchOnWindowFocus: false,
+      retry: false,
+      enabled: Boolean(searchText),
+      onError: handleError,
+    }
+  );
+  const jobItems = data?.jobItems ?? [];
+  const isLoading = isInitialLoading;
+  return { jobItems, isLoading } as const;
 }
 
 export function useJobItem(id: number | null) {
   const { data, isInitialLoading } = useQuery(
     ["job-item", id],
-    () => (id ? fetchJobItem(id) : null),
+    () => (id ? getJobItem(id) : null),
     {
       staleTime: 1000 * 60 * 60,
       refetchOnWindowFocus: false,
       retry: false,
       enabled: Boolean(id),
-      onError: () => {},
+      onError: handleError,
     }
   );
-  const jobItem = data?.jobItem;
+  const jobItem = data?.jobItem ?? null;
   const isLoading = isInitialLoading;
   return { jobItem, isLoading } as const;
 }
