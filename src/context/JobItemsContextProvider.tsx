@@ -1,4 +1,4 @@
-import { createContext, useState } from "react";
+import { createContext, useCallback, useMemo, useState } from "react";
 import { RESULT_PER_PAGE } from "../lib/constants";
 import { useSearchQuery, useSearchTextContext } from "../lib/hooks";
 import { SortBy, PageDirection, JobItem } from "../lib/types";
@@ -29,46 +29,68 @@ export default function JobItemsContextProvider({
   const [sortBy, setSortBy] = useState<SortBy>("relevant");
 
   const totalNumberOfJobs = jobItems.length;
-  const totalNumberOfPages = Math.ceil(totalNumberOfJobs / RESULT_PER_PAGE);
-  const jobItemsSorted = [...(jobItems || [])]?.sort((a, b) => {
-    if (sortBy === "relevant") {
-      return b.relevanceScore - a.relevanceScore;
-    } else {
-      return a.daysAgo - b.daysAgo;
-    }
-  });
-  const jobItemsSortedAndSliced = jobItemsSorted.slice(
-    currentPage * RESULT_PER_PAGE - RESULT_PER_PAGE,
-    currentPage * RESULT_PER_PAGE
+  const totalNumberOfPages = totalNumberOfJobs / RESULT_PER_PAGE;
+  const jobItemsSorted = useMemo(
+    () =>
+      [...(jobItems || [])]?.sort((a, b) => {
+        if (sortBy === "relevant") {
+          return b.relevanceScore - a.relevanceScore;
+        } else {
+          return a.daysAgo - b.daysAgo;
+        }
+      }),
+    [jobItems, sortBy]
   );
 
-  const handleChangePage = (direction: PageDirection) => {
+  const jobItemsSortedAndSliced = useMemo(
+    () =>
+      jobItemsSorted.slice(
+        currentPage * RESULT_PER_PAGE - RESULT_PER_PAGE,
+        currentPage * RESULT_PER_PAGE
+      ),
+    [currentPage, jobItemsSorted]
+  );
+
+  const handleChangePage = useCallback((direction: PageDirection) => {
     if (direction === "next") {
       setCurrentPage((prev) => prev + 1);
     } else {
       setCurrentPage((prev) => prev - 1);
     }
-  };
+  }, []);
 
-  const handleChangeSortBy = (newSortBy: SortBy) => {
+  const handleChangeSortBy = useCallback((newSortBy: SortBy) => {
     setCurrentPage(1);
     setSortBy(newSortBy);
-  };
+  }, []);
+
+  const contextValue = useMemo(
+    () => ({
+      jobItems,
+      jobItemsSortedAndSliced,
+      isLoading,
+      totalNumberOfJobs,
+      totalNumberOfPages,
+      currentPage,
+      sortBy,
+      handleChangePage,
+      handleChangeSortBy,
+    }),
+    [
+      jobItems,
+      jobItemsSortedAndSliced,
+      isLoading,
+      totalNumberOfJobs,
+      totalNumberOfPages,
+      currentPage,
+      sortBy,
+      handleChangePage,
+      handleChangeSortBy,
+    ]
+  );
 
   return (
-    <JobItemsContext.Provider
-      value={{
-        jobItems,
-        jobItemsSortedAndSliced,
-        isLoading,
-        totalNumberOfJobs,
-        totalNumberOfPages,
-        currentPage,
-        sortBy,
-        handleChangePage,
-        handleChangeSortBy,
-      }}
-    >
+    <JobItemsContext.Provider value={contextValue}>
       {children}
     </JobItemsContext.Provider>
   );
