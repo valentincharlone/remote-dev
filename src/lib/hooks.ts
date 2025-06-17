@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { JobItem, JobItemExpanded } from "./types";
 import { BASE_API_URL } from "./constants";
 import { useQuery } from "@tanstack/react-query";
 import { handleError } from "./utils";
+import { BookmarksContext } from "../context/BookmarksContextProvider";
 
 type JobItemApiResponse = {
   public: boolean;
@@ -109,4 +110,52 @@ export function useDebounce(searchText: string) {
   }, [searchText]);
 
   return debounceValue;
+}
+
+export function useLocalStorage<T>(
+  key: string,
+  initialValue: T
+): [T, React.Dispatch<React.SetStateAction<T>>] {
+  const [value, setValue] = useState(() => {
+    // Verificar si estamos en el cliente (no SSR)
+    if (typeof window === "undefined") {
+      return initialValue;
+    }
+
+    try {
+      const item = localStorage.getItem(key);
+
+      // Si no existe el item o es la cadena "undefined", usar valor inicial
+      if (item === null || item === "undefined") {
+        return initialValue;
+      }
+
+      return JSON.parse(item);
+    } catch (error) {
+      console.warn(`Error parsing localStorage key "${key}":`, error);
+      return initialValue;
+    }
+  });
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem(key, JSON.stringify(value));
+      } catch (error) {
+        console.warn(`Error setting localStorage key "${key}":`, error);
+      }
+    }
+  }, [value, key]);
+
+  return [value, setValue] as const;
+}
+
+export function useBookmarksContext() {
+  const context = useContext(BookmarksContext);
+  if (!context) {
+    throw new Error(
+      "useBookmarksContext must be used within a BookmarksContextProvider"
+    );
+  }
+  return context;
 }
