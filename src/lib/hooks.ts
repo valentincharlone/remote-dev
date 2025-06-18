@@ -56,7 +56,7 @@ export function useJobItems(ids: number[]) {
 
   const jobItems = results
     .map((result) => result.data?.jobItem)
-    .filter((jobItem) => jobItem !== undefined);
+    .filter((jobItem) => Boolean(jobItem)) as JobItemExpanded[];
   const isLoading = results.some((result) => result.isLoading);
   return { jobItems, isLoading } as const;
 }
@@ -139,38 +139,15 @@ export function useLocalStorage<T>(
   key: string,
   initialValue: T
 ): [T, React.Dispatch<React.SetStateAction<T>>] {
-  const [value, setValue] = useState(() => {
-    // Verificar si estamos en el cliente (no SSR)
-    if (typeof window === "undefined") {
-      return initialValue;
-    }
-
-    try {
-      const item = localStorage.getItem(key);
-
-      // Si no existe el item o es la cadena "undefined", usar valor inicial
-      if (item === null || item === "undefined") {
-        return initialValue;
-      }
-
-      return JSON.parse(item);
-    } catch (error) {
-      console.warn(`Error parsing localStorage key "${key}":`, error);
-      return initialValue;
-    }
-  });
+  const [value, setValue] = useState(() =>
+    JSON.parse(localStorage.getItem(key) || JSON.stringify(initialValue))
+  );
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      try {
-        localStorage.setItem(key, JSON.stringify(value));
-      } catch (error) {
-        console.warn(`Error setting localStorage key "${key}":`, error);
-      }
-    }
+    localStorage.setItem(key, JSON.stringify(value));
   }, [value, key]);
 
-  return [value, setValue] as const;
+  return [value, setValue];
 }
 
 export function useOnClickOutside(
