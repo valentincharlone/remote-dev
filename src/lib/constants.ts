@@ -1,2 +1,2 @@
-export const BASE_API_URL = "https://bytegrad.com/course-assets/projects/rmtdev/api/data";
+export const BASE_API_URL = import.meta.env.VITE_API_URL;
 export const RESULT_PER_PAGE = 7;
